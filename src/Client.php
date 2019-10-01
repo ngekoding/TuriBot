@@ -3,63 +3,39 @@
 namespace TuriBot;
 
 use CURLFile;
-
 class Client extends Api
 {
     public $easy;
-
     private $endpoint, $curl, $json_payload;
-
-
     /*
      * @param string $token Bot API token
      * @param bool $json_payload if true enable json payload, otherwise use always curl
      */
-
-    public function __construct(string $token, bool $json_payload = false)
+    public function __construct($token, $json_payload = false)
     {
         $this->endpoint = "https://api.telegram.org/bot" . $token . "/";
         $this->json_payload = $json_payload;
         $this->curl = curl_init();
-
-        curl_setopt_array($this->curl, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_FORBID_REUSE   => true,
-            CURLOPT_HEADER         => false,
-            CURLOPT_TIMEOUT        => 120,
-            CURLOPT_CONNECTTIMEOUT => 2,
-            CURLOPT_HTTPHEADER     => ["Connection: Keep-Alive", "Keep-Alive: 120"],
-        ]);
+        curl_setopt_array($this->curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true, CURLOPT_FORBID_REUSE => true, CURLOPT_HEADER => false, CURLOPT_TIMEOUT => 120, CURLOPT_CONNECTTIMEOUT => 2, CURLOPT_HTTPHEADER => ["Connection: Keep-Alive", "Keep-Alive: 120"]]);
     }
-
-
     /*
      * @return \stdClass of update received from webhook
      */
-
-    public function getUpdate(): \stdClass
+    public function getUpdate()
     {
         $update = json_decode(file_get_contents("php://input"));
         $this->easy = new EasyVars($update);
-
         return $update;
     }
-
-
     /*
      * @param string $path Path of file
      * @return \CURLFile of $path
      */
-
-    public function inputFile(string $path): \CURLFile
+    public function inputFile($path)
     {
         $path = realpath($path);
-
         return new CURLFile($path);
     }
-
-
     /*
      * Make a request to Bot API
      *
@@ -68,8 +44,7 @@ class Client extends Api
      *
      * @return \stdClass getUpdate if jsonPayload, otherwise response of Telegram
      */
-
-    public function Request(string $method, array $args = []): \stdClass
+    public function Request($method, array $args = [])
     {
         if ($this->json_payload) {
             $args["method"] = $method;
@@ -83,41 +58,22 @@ class Client extends Api
             ob_flush();
             flush();
             $this->json_payload = false;
-
             return $this->getUpdate();
         } else {
-            curl_setopt_array($this->curl, [
-                CURLOPT_URL        => $this->endpoint . $method,
-                CURLOPT_POSTFIELDS => $args,
-            ]);
+            curl_setopt_array($this->curl, [CURLOPT_URL => $this->endpoint . $method, CURLOPT_POSTFIELDS => $args]);
             $resultCurl = curl_exec($this->curl);
             if ($resultCurl === false) {
-                $arr = [
-                    "ok"          => false,
-                    "error_code"  => curl_errno($this->curl),
-                    "description" => curl_error($this->curl),
-                    "curl_error"  => true
-                ];
-
+                $arr = ["ok" => false, "error_code" => curl_errno($this->curl), "description" => curl_error($this->curl), "curl_error" => true];
                 $resultCurl = json_encode($arr);
             }
-
             $resultJson = json_decode($resultCurl);
             if ($resultJson === null) {
-                $arr = [
-                    "ok"          => false,
-                    "error_code"  => json_last_error(),
-                    "description" => json_last_error_msg(),
-                    "json_error"  => true
-                ];
+                $arr = ["ok" => false, "error_code" => json_last_error(), "description" => json_last_error_msg(), "json_error" => true];
                 $resultJson = json_decode(json_encode($arr));
             }
-
             return $resultJson;
         }
     }
-
-
     /*
      * Make var_export() and send it in the actual chat_id
      *
@@ -126,13 +82,11 @@ class Client extends Api
      *
      * @return bool true if can send message, otherwise false
      */
-
-    public function debug($chat_id, ...$vars): bool
+    public function debug($chat_id, ...$vars)
     {
         foreach ($vars as $debug) {
             $str = var_export($debug, true);
             $array_str = str_split($str, 4050);
-
             foreach ($array_str as $value) {
                 $result = $this->sendMessage($chat_id, "Debug:" . PHP_EOL . $value);
                 if ($result->ok === false) {
@@ -140,8 +94,6 @@ class Client extends Api
                 }
             }
         }
-
         return true;
     }
-
 }
